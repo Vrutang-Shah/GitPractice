@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+Full-Stack-Data-Science-Assignments-Repository/
 
 # C extensions
 *.so
