@@ -1,0 +1,2148 @@
+{
+    "background": "white",
+    "width": {
+        "signal": "ganttWidth"
+    },
+    "padding": {
+        "left": 10,
+        "right": 10,
+        "top": 10,
+        "bottom": 10
+    },
+    "data": [
+        {
+            "name": "dataset"
+        },
+        {
+            "name": "selectedHierarchy",
+            "source": "dataset",
+            "transform": [
+                {
+                    "type": "filter",
+                    "expr": "datum.Hierarchy === selectedHierarchy"
+                },
+                {
+                    "type": "formula",
+                    "as": "HierarchyArray",
+                    "expr": "split(datum.NextLevelHierarchy, '|')"
+                }
+            ]
+        },
+        {
+            "name": "logTable",
+            "values": [
+                {
+                    "value": ""
+                }
+            ],
+            "transform": [
+                {
+                    "type": "formula",
+                    "expr": "datum.value",
+                    "as": "value"
+                },
+                {
+                    "type": "filter",
+                    "expr": "datum.value !== ''"
+                },
+                {
+                    "type": "aggregate",
+                    "groupby": [
+                        "value"
+                    ],
+                    "ops": [
+                        "count"
+                    ],
+                    "as": [
+                        "count"
+                    ]
+                },
+                {
+                    "type": "formula",
+                    "expr": "datum.count % 2 ? 1 : 0",
+                    "as": "countIndicator"
+                }
+            ]
+        },
+        {
+            "name": "dropdownFilter",
+            "source": "logTable",
+            "transform": [
+                {
+                    "type": "filter",
+                    "expr": "datum.value !== ''"
+                },
+                {
+                    "type": "aggregate",
+                    "groupby": [
+                        "value"
+                    ],
+                    "ops": [
+                        "count"
+                    ],
+                    "as": [
+                        "count"
+                    ]
+                },
+                {
+                    "type": "formula",
+                    "expr": "datum.count % 2 ? 1 : 0",
+                    "as": "countIndicator"
+                },
+                {
+                    "type": "project",
+                    "fields": [
+                        "value",
+                        "countIndicator"
+                    ],
+                    "as": [
+                        "uniqueValue",
+                        "countOddEven"
+                    ]
+                },
+                {
+                    "type": "filter",
+                    "expr": "datum.countOddEven !== 0"
+                },
+                {
+                    "type": "formula",
+                    "as": "HierarchyArray",
+                    "expr": "split(datum.uniqueValue, '|')"
+                }
+            ]
+        },
+        {
+            "name": "expandedHierarchy",
+            "source": "dropdownFilter",
+            "transform": [
+                {
+                    "type": "flatten",
+                    "fields": [
+                        "HierarchyArray"
+                    ],
+                    "as": [
+                        "HierarchyFlatten"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "UniqueHierarchyTable",
+            "source": "dataset",
+            "transform": [
+                {
+                    "type": "aggregate",
+                    "groupby": [
+                        "Level","Hierarchy", "ParentHierarchy"
+                    ]
+                },
+                {
+                    "type": "filter",
+                    "expr": "datum.Hierarchy !== null"
+                },
+                {
+                    "type": "formula",
+                    "expr": "datum.Level === 1 || datum.Level === 2 ? 1 : 0",
+                    "as": "InitialState"
+                }
+            ]
+        },
+        {
+            "name": "input",
+            "source": "dataset",
+            "transform": [
+                {
+                    "type": "lookup",
+                    "from": "expandedHierarchy",
+                    "key": "HierarchyFlatten",
+                    "fields": [
+                        "Hierarchy"
+                    ],
+                    "as": [
+                        "matchedHierarchy"
+                    ]
+                },
+                {
+                    "type": "filter",
+                    "expr": "(datum.ActivityName !== null) && (datum.Level === 1 || datum.Level === 2 || (datum.matchedHierarchy !== null))"
+                },
+                {
+                    "type": "formula",
+                    "as": "CurrentStartConditional",
+                    "expr": "timeFormat(datum.CurrentStart, '%d') !== 'NaN' ? datum.CurrentStart : datetime(now())"
+                },
+                {
+                    "type": "formula",
+                    "as": "CurrentFinishConditional",
+                    "expr": "timeFormat(datum.CurrentFinish, '%d') !== 'NaN' ? datum.CurrentFinish : datetime(now())"
+                },
+                {
+                    "type": "formula",
+                    "as": "BaselineStartConditional",
+                    "expr": "timeFormat(datum.BaselineStart, '%d') !== 'NaN' ? datum.BaselineStart : datetime(now())"
+                },
+                {
+                    "type": "formula",
+                    "as": "BaselineFinishConditional",
+                    "expr": "timeFormat(datum.BaselineFinish, '%d') !== 'NaN' ? datum.BaselineFinish : datetime(now())"
+                },
+                {
+                    "type": "formula",
+                    "as": "encodedCurrentStart",
+                    "expr": "timeFormat(datum.CurrentStart, '%d') !== 'NaN' ? timeFormat(datum.CurrentStart,'%d/%m/%y') : ''"
+                },
+                {
+                    "type": "formula",
+                    "as": "encodedCurrentFinish",
+                    "expr": "timeFormat(datum.CurrentFinish, '%d') !== 'NaN' ? timeFormat(datum.CurrentFinish,'%d/%m/%y') : ''"
+                },
+                {
+                    "type": "formula",
+                    "as": "StartDate_DMY",
+                    "expr": "timeFormat(datum.CurrentStart, '%d') !== 'NaN' ? timeFormat(datum.CurrentStart, '%b %d, %Y') : ''"
+                },
+                {
+                    "type": "formula",
+                    "as": "FinishDate_DMY",
+                    "expr": "timeFormat(datum.CurrentFinish, '%d') !== 'NaN' ? timeFormat(datum.CurrentFinish, '%b %d, %Y') : ''"
+                },
+                {
+                    "type": "formula",
+                    "as": "BaselineStartDate_DMY",
+                    "expr": "timeFormat(datum.BaselineStart, '%d') !== 'NaN' ? timeFormat(datum.BaselineStart, '%b %d, %Y') : ''"
+                },
+                {
+                    "type": "formula",
+                    "as": "BaselineFinishDate_DMY",
+                    "expr": "timeFormat(datum.BaselineFinish, '%d') !== 'NaN' ? timeFormat(datum.BaselineFinish, '%b %d, %Y') : ''"
+                },
+                {
+                    "type": "formula",
+                    "as": "StartDate_QY",
+                    "expr": "timeFormat(datum.CurrentStart, 'Q%q %Y')"
+                },
+                {
+                    "type": "formula",
+                    "as": "FinishDate_QY",
+                    "expr": "timeFormat(datum.CurrentFinish, 'Q%q %Y')"
+                },
+                {
+                    "type": "formula",
+                    "as": "StartDate_Y",
+                    "expr": "timeFormat(datum.CurrentStart, '%Y')"
+                },
+                {
+                    "type": "formula",
+                    "as": "FinishDate_Y",
+                    "expr": "timeFormat(datum.CurrentFinish, '%Y')"
+                },
+                {
+                    "type": "formula",
+                    "as": "Indentation",
+                    "expr": "datum.Level * 10 - 10"
+                }
+            ]
+        },
+        {
+            "name": "days",
+            "source": "input",
+            "transform": [
+                {
+                    "type": "aggregate",
+                    "fields": [
+                        "CurrentStartConditional",
+                        "CurrentFinishConditional",
+                        "BaselineStartConditional",
+                        "BaselineFinishConditional"
+                    ],
+                    "ops": [
+                        "min",
+                        "max",
+                        "min",
+                        "max"
+                    ],
+                    "as": [
+                        "minDate1",
+                        "maxDate1",
+                        "minDate2",
+                        "maxDate2"
+                    ]
+                },
+                {
+                    "type": "formula",
+                    "expr": "min(datum.minDate1, datum.minDate2)",
+                    "as": "minDate"
+                },
+                {
+                    "type": "formula",
+                    "expr": "max(datum.maxDate1, datum.maxDate2)",
+                    "as": "maxDate"
+                },
+                {
+                    "type": "formula",
+                    "as": "days",
+                    "expr": "round((datum.maxDate-datum.minDate)/1000/60/60/24)"
+                },
+                {
+                    "type": "formula",
+                    "as": "firstDayOfMonth",
+                    "expr": "utcParse(('01' + '/' + timeFormat(datum.minDate,'%m') + '/' + timeFormat(datum.minDate,'%y')), '%d/%m/%y')"
+                },
+                {
+                    "type": "formula",
+                    "as": "lastDayOfMonth",
+                    "expr": "timeOffset('day', timeOffset('month', utcParse(('01' + '/' + timeFormat(datum.maxDate,'%m') + '/' + timeFormat(datum.maxDate,'%y')), '%d/%m/%y')), -1)"
+                },
+                {
+                    "type": "formula",
+                    "as": "months",
+                    "expr": "utcmonth(datum.lastDayOfMonth) - utcmonth(datum.firstDayOfMonth) + (utcyear(datum.lastDayOfMonth) - utcyear(datum.firstDayOfMonth)) * 12"
+                },
+                {
+                    "type": "formula",
+                    "as": "daysRounded",
+                    "expr": "round((datum.lastDayOfMonth-datum.firstDayOfMonth)/1000/60/60/24)"
+                },
+                {
+                    "type": "formula",
+                    "as": "firstDayOfQuarter",
+                    "expr": "datetime(year(datum.minDate), (quarter(datum.minDate) * 3) - 3, 1)"
+                },
+                {
+                    "type": "formula",
+                    "as": "lastDayOfQuarter",
+                    "expr": "datetime(year(datum.maxDate), (quarter(datum.maxDate)) * 3, 0)"
+                },
+                {
+                    "type": "formula",
+                    "as": "quarters",
+                    "expr": "utcquarter(datum.lastDayOfQuarter) - utcquarter(datum.firstDayOfQuarter) + (utcyear(datum.lastDayOfQuarter) - utcyear(datum.firstDayOfQuarter)) * 4"
+                },
+                {
+                    "type": "formula",
+                    "as": "monthsRounded",
+                    "expr": "round((datum.lastDayOfQuarter-datum.firstDayOfQuarter)/1000/60/60/24)"
+                }
+            ]
+        },
+        {
+            "name": "dayScale",
+            "transform": [
+                {
+                    "type": "sequence",
+                    "start": -1,
+                    "stop": {
+                        "signal": "days+8"
+                    },
+                    "as": "sequence"
+                },
+                {
+                    "type": "formula",
+                    "as": "date",
+                    "expr": "datetime(toNumber(data('days')[0]['minDate'])+((1000*60*60*24)*datum.sequence))"
+                },
+                {
+                    "type": "formula",
+                    "as": "encodedDate",
+                    "expr": "timeFormat(datum.date,'%d/%m/%y')"
+                },
+                {
+                    "type": "formula",
+                    "as": "monthYear",
+                    "expr": "timeFormat(datum.date, '%m-%Y')"
+                },
+                {
+                    "type": "formula",
+                    "as": "quarterYear",
+                    "expr": "'Q' + quarter(datum.date) + '-' + year(datum.date)"
+                },
+                {
+                    "type": "formula",
+                    "as": "year",
+                    "expr": "year(datum.date)"
+                },
+                {
+                    "type": "window",
+                    "sort": {
+                        "field": "sequence"
+                    },
+                    "ops": [
+                        "row_number"
+                    ],
+                    "as": [
+                        "index"
+                    ]
+                },
+                {
+                    "type": "formula",
+                    "as": "Entry",
+                    "expr": "'days'"
+                }
+            ]
+        },
+        {
+            "name": "monScale",
+            "transform": [
+                {
+                    "type": "sequence",
+                    "start": 0,
+                    "stop": {
+                        "signal": "daysRounded + 1"
+                    },
+                    "as": "sequence"
+                },
+                {
+                    "type": "formula",
+                    "as": "date",
+                    "expr": "datetime(toNumber(data('days')[0]['firstDayOfMonth'])+((1000*60*60*24)*datum.sequence))"
+                },
+                {
+                    "type": "formula",
+                    "as": "encodedDate",
+                    "expr": "timeFormat(datum.date,'%d/%m/%y')"
+                },
+                {
+                    "type": "formula",
+                    "as": "monthYear",
+                    "expr": "timeFormat(datum.date, '%m-%Y')"
+                },
+                {
+                    "type": "formula",
+                    "as": "quarterYear",
+                    "expr": "'Q' + quarter(datum.date) + '-' + year(datum.date)"
+                },
+                {
+                    "type": "formula",
+                    "as": "year",
+                    "expr": "year(datum.date)"
+                },
+                {
+                    "type": "window",
+                    "sort": {
+                        "field": "sequence"
+                    },
+                    "ops": [
+                        "row_number"
+                    ],
+                    "as": [
+                        "index"
+                    ]
+                },
+                {
+                    "type": "formula",
+                    "as": "Entry",
+                    "expr": "'days'"
+                }
+            ]
+        },
+        {
+            "name": "quarterScale",
+            "transform": [
+                {
+                    "type": "sequence",
+                    "start": 0,
+                    "stop": {
+                        "signal": "monthsRounded + 1"
+                    },
+                    "as": "sequence"
+                },
+                {
+                    "type": "formula",
+                    "as": "date",
+                    "expr": "datetime(toNumber(data('days')[0]['firstDayOfQuarter'])+((1000*60*60*24)*datum.sequence))"
+                },
+                {
+                    "type": "formula",
+                    "as": "encodedDate",
+                    "expr": "timeFormat(datum.date,'%d/%m/%y')"
+                },
+                {
+                    "type": "formula",
+                    "as": "monthYear",
+                    "expr": "timeFormat(datum.date, '%m-%Y')"
+                },
+                {
+                    "type": "formula",
+                    "as": "quarterYear",
+                    "expr": "'Q' + quarter(datum.date) + '-' + year(datum.date)"
+                },
+                {
+                    "type": "formula",
+                    "as": "year",
+                    "expr": "year(datum.date)"
+                },
+                {
+                    "type": "window",
+                    "sort": {
+                        "field": "sequence"
+                    },
+                    "ops": [
+                        "row_number"
+                    ],
+                    "as": [
+                        "index"
+                    ]
+                },
+                {
+                    "type": "formula",
+                    "as": "Entry",
+                    "expr": "'days'"
+                }
+            ]
+        },
+        {
+            "name": "monthYearTable",
+            "source": "dayScale",
+            "transform": [
+                {
+                    "type": "aggregate",
+                    "fields": [
+                        "monthYear"
+                    ],
+                    "ops": [
+                        "min"
+                    ],
+                    "as": [
+                        "monthYear"
+                    ],
+                    "groupby": [
+                        "monthYear"
+                    ]
+                },
+                {
+                    "type": "lookup",
+                    "from": "dayScale",
+                    "key": "monthYear",
+                    "values": [
+                        "sequence"
+                    ],
+                    "fields": [
+                        "monthYear"
+                    ]
+                },
+                {
+                    "type": "lookup",
+                    "from": "dayScale",
+                    "key": "monthYear",
+                    "values": [
+                        "encodedDate"
+                    ],
+                    "fields": [
+                        "monthYear"
+                    ]
+                },
+                {
+                    "type": "lookup",
+                    "from": "dayScale",
+                    "key": "monthYear",
+                    "values": [
+                        "date"
+                    ],
+                    "fields": [
+                        "monthYear"
+                    ]
+                },
+                {
+                    "type": "window",
+                    "sort": {
+                        "field": "sequence"
+                    },
+                    "ops": [
+                        "row_number"
+                    ],
+                    "as": [
+                        "index"
+                    ]
+                },
+                {
+                    "type": "formula",
+                    "expr": "split(datum.monthYear, '-')[0]",
+                    "as": "month"
+                },
+                {
+                    "type": "formula",
+                    "expr": "split(datum.monthYear, '-')[1]",
+                    "as": "year"
+                },
+                {
+                    "type": "formula",
+                    "as": "Entry",
+                    "expr": "'months'"
+                }
+            ]
+        },
+        {
+            "name": "quarterYearTable",
+            "source": "dayScale",
+            "transform": [
+                {
+                    "type": "aggregate",
+                    "fields": [
+                        "quarterYear"
+                    ],
+                    "ops": [
+                        "min"
+                    ],
+                    "as": [
+                        "quarterYear"
+                    ],
+                    "groupby": [
+                        "quarterYear"
+                    ]
+                },
+                {
+                    "type": "lookup",
+                    "from": "dayScale",
+                    "key": "quarterYear",
+                    "values": [
+                        "sequence"
+                    ],
+                    "fields": [
+                        "quarterYear"
+                    ]
+                },
+                {
+                    "type": "lookup",
+                    "from": "dayScale",
+                    "key": "quarterYear",
+                    "values": [
+                        "encodedDate"
+                    ],
+                    "fields": [
+                        "quarterYear"
+                    ]
+                },
+                {
+                    "type": "lookup",
+                    "from": "dayScale",
+                    "key": "quarterYear",
+                    "values": [
+                        "date"
+                    ],
+                    "fields": [
+                        "quarterYear"
+                    ]
+                },
+                {
+                    "type": "window",
+                    "sort": {
+                        "field": "sequence"
+                    },
+                    "ops": [
+                        "row_number"
+                    ],
+                    "as": [
+                        "index"
+                    ]
+                },
+                {
+                    "type": "formula",
+                    "expr": "split(datum.quarterYear, '-')[0]",
+                    "as": "quarter"
+                },
+                {
+                    "type": "formula",
+                    "expr": "split(datum.quarterYear, '-')[1]",
+                    "as": "year"
+                },
+                {
+                    "type": "formula",
+                    "as": "Entry",
+                    "expr": "'quarters'"
+                }
+            ]
+        },
+        {
+            "name": "mergedTable",
+            "source": [
+                "dayScale",
+                "monthYearTable",
+                "quarterYearTable"
+            ],
+            "transform": [
+                {
+                    "type": "filter",
+                    "expr": "datum.Entry === xAxisTimeUnit"
+                }
+            ]
+        },
+        {
+            "name": "tasks",
+            "source": "input",
+            "transform": [
+                {
+                    "type": "filter",
+                    "expr": "timeFormat(datum.CurrentStart, '%d') !== 'NaN' && timeFormat(datum.CurrentFinish, '%d') !== 'NaN'"
+                },
+                {
+                    "type": "formula",
+                    "as": "encodedCurrentStart",
+                    "expr": "timeFormat(datum.CurrentStart, '%d') !== 'NaN' ? timeFormat(datum.CurrentStart,'%d/%m/%y') : ''"
+                },
+                {
+                    "type": "formula",
+                    "as": "encodedCurrentFinish",
+                    "expr": "timeFormat(datum.CurrentFinish, '%d') !== 'NaN' ? timeFormat(timeOffset('day', datum.CurrentFinish, 1), '%d/%m/%y') : ''"
+                },
+                {
+                    "type": "formula",
+                    "as": "encodedBaselineStart",
+                    "expr": "timeFormat(datum.BaselineStart, '%d') !== 'NaN' ? timeFormat(datum.BaselineStart,'%d/%m/%y') : ''"
+                },
+                {
+                    "type": "formula",
+                    "as": "encodedBaselineFinish",
+                    "expr": "timeFormat(datum.BaselineFinish, '%d') !== 'NaN' ? timeFormat(timeOffset('day', datum.BaselineFinish, 1), '%d/%m/%y') : ''"
+                }
+            ]
+        },
+        {
+            "name": "tasksTillToday",
+            "source": "tasks",
+            "transform": [
+                {
+                    "type": "formula",
+                    "expr": "timeFormat(datum.CurrentStart < datetime(now()) && timeOffset('day', datum.CurrentFinish, 1) < datetime(now()) ? datum.CurrentStart : (datum.CurrentStart < datetime(now()) ? datum.CurrentStart : datetime(now())), '%d/%m/%y')",
+                    "as": "CurrentStartFill"
+                },
+                {
+                    "type": "formula",
+                    "expr": "timeFormat(datum.CurrentStart < datetime(now()) && timeOffset('day', datum.CurrentFinish, 1) < datetime(now()) ? timeOffset('day', datum.CurrentFinish, 1) : (datum.CurrentStart < datetime(now()) ? datetime(now()) : null), '%d/%m/%y')",
+                    "as": "CurrentFinishFill"
+                },
+                {
+                    "type": "filter",
+                    "expr": "datum.CurrentStart < datetime(now()) || timeOffset('day', datum.CurrentFinish, 1) < datetime(now())"
+                }
+            ]
+        },
+        {
+            "name": "milestone",
+            "source": "input",
+            "transform": [
+                {
+                    "type": "filter",
+                    "expr": "timeFormat(datum.CurrentStart, '%d') == 'NaN' || timeFormat(datum.CurrentFinish, '%d') == 'NaN'"
+                },
+                {
+                    "type": "formula",
+                    "as": "CurrentDate",
+                    "expr": "isNaN(toNumber(timeFormat(datum.CurrentStart, '%d'))) ? datum.CurrentFinish : datum.CurrentStart"
+                },
+                {
+                    "type": "formula",
+                    "as": "encodedCurrentDate",
+                    "expr": "timeFormat(datum.CurrentDate, '%d') !== 'NaN' ? timeFormat(datum.CurrentDate,'%d/%m/%y') : ''"
+                }
+            ]
+        },
+        {
+            "name": "BaselineMilestone",
+            "source": "input",
+            "transform": [
+                {
+                    "type": "filter",
+                    "expr": "timeFormat(datum.BaselineStart, '%d') == 'NaN' || timeFormat(datum.BaselineFinish, '%d') == 'NaN'"
+                },
+                {
+                    "type": "formula",
+                    "as": "BaselineDate",
+                    "expr": "isNaN(toNumber(timeFormat(datum.BaselineStart, '%d'))) ? datum.BaselineFinish : datum.BaselineStart"
+                },
+                {
+                    "type": "formula",
+                    "as": "encodedBaselineDate",
+                    "expr": "timeFormat(datum.BaselineDate, '%d') !== 'NaN' ? timeFormat(datum.BaselineDate,'%d/%m/%y') : ''"
+                },
+                {
+                    "type": "filter",
+                    "expr": "timeFormat(datum.BaselineStart, '%d') !== 'NaN'"
+                }
+            ]
+        }
+    ],
+    "signals": [
+        {
+            "name": "xAxisTimeUnit",
+            "update": "data('input')[0]['Scale']"
+        },
+        {
+            "name": "xScaleDomain",
+            "value": {
+                "data": "mergedTable",
+                "fields": [
+                    "encodedDate"
+                ]
+            }
+        },
+        {
+            "name": "formatSpecifier",
+            "update": "xAxisTimeUnit === 'days' ? '%d' : xAxisTimeUnit === 'months' ? '%m' : '%Q'"
+        },
+        {
+            "name": "ganttWidth",
+            "update": "xAxisTimeUnit === 'days' ? days * x_step : xAxisTimeUnit === 'months' ? months * x_step : quarters * x_step"
+        },
+        {
+            "name": "x_step",
+            "value": 35
+        },
+        {
+            "name": "days",
+            "update": "data('days')[0]['days']"
+        },
+        {
+            "name": "daysRounded",
+            "update": "data('days')[0]['daysRounded']"
+        },
+        {
+            "name": "monthsRounded",
+            "update": "data('days')[0]['monthsRounded']"
+        },
+        {
+            "name": "months",
+            "update": "data('days')[0]['months']"
+        },
+        {
+            "name": "quarters",
+            "update": "data('days')[0]['quarters']"
+        },
+        {
+            "name": "CurrentStartColumn",
+            "value": 80
+        },
+        {
+            "name": "CurrentFinishColumn",
+            "value": 80
+        },
+        {
+            "name": "BaselineStartColumn",
+            "value": 80
+        },
+        {
+            "name": "BaselineFinishColumn",
+            "value": 80
+        },
+        {
+            "name": "RemDur",
+            "value": 20
+        },
+        {
+            "name": "TotalFloat",
+            "value": 30
+        },
+        {
+            "name": "LevelNameColumn",
+            "value": 25
+        },
+        {
+            "name": "ActivityNameColumn",
+            "value": 250
+        },
+        {
+            "name": "TotalLength",
+            "update": "LevelNameColumn + CurrentStartColumn + CurrentFinishColumn + BaselineStartColumn + BaselineFinishColumn + RemDur + TotalFloat + ActivityNameColumn + ganttWidth + (8 * columnPadding)"
+        },
+        {
+            "name": "height",
+            "update": "bandspace(domain('y').length, yPaddingInner, yPaddingOuter) * y_step"
+        },
+        {
+            "name": "yPaddingInner",
+            "value": 0.45
+        },
+        {
+            "name": "yPaddingOuter",
+            "value": 0.4
+        },
+        {
+            "name": "y_step",
+            "value": 28
+        },
+        {
+            "name": "columnPadding",
+            "value": 15
+        },
+        {
+            "name": "today",
+            "update": "timeFormat(datetime(now()),'%d/%m/%y')"
+        },
+        {
+            "name": "todayRule",
+            "update": "today"
+        },
+        {
+            "name": "selectedHierarchy",
+            "value": null,
+            "on": [
+                {
+                    "events": "text:click",
+                    "update": "datum.Hierarchy"
+                },
+                {
+                    "events": "text:click",
+                    "update": "modify('logTable', {value: datum.Hierarchy})",
+                    "force": true
+                }
+            ]
+        }
+    ],
+    "marks": [
+        {
+            "type": "rule",
+            "name": "horizontalLineBelowHeading",
+            "encode": {
+                "update": {
+                    "y": {
+                        "value": 0
+                    },
+                    "x": {
+                        "value": 0
+                    },
+                    "x2": {
+                        "signal": "TotalLength"
+                    },
+                    "stroke": {
+                        "value": "#605E5C"
+                    },
+                    "strokeWidth": {
+                        "value": 1
+                    }
+                }
+            }
+        },
+        {
+            "type": "rule",
+            "name": "horizontalLines",
+            "from": {
+                "data": "input"
+            },
+            "encode": {
+                "update": {
+                    "y": {
+                        "scale": "y",
+                        "field": "Index",
+                        "band": 1.3
+                    },
+                    "x": {
+                        "value": 0
+                    },
+                    "x2": {
+                        "signal": "TotalLength"
+                    },
+                    "stroke": {
+                        "value": "#E5E5E5"
+                    },
+                    "strokeWidth": {
+                        "value": 1
+                    }
+                }
+            }
+        },
+        {
+            "type": "group",
+            "name": "LevelNameColumn",
+            "style": "cell",
+            "title": {
+                "text": "Level",
+                "anchor": "start",
+                "frame": "group",
+                "baseline": "middle",
+                "align": "left",
+                "color": "#252423",
+                "font": "Segoe UI",
+                "fontSize": 12,
+                "fontStyle": "bold"
+            },
+            "encode": {
+                "update": {
+                    "width": {
+                        "signal": "LevelNameColumn"
+                    },
+                    "height": {
+                        "signal": "height"
+                    }
+                }
+            },
+            "marks": [
+                {
+                    "type": "text",
+                    "style": "col",
+                    "from": {
+                        "data": "input"
+                    },
+                    "interactive": true,
+                    "encode": {
+                        "update": {
+                            "align": {
+                                "value": "left"
+                            },
+                            "fill": {
+                                "value": "#252423"
+                            },
+                            "dx": {
+                                "signal": "LevelNameColumn/2"
+                            },
+                            "y": {
+                                "signal": "scale('y',datum.Index)+bandwidth('y')/2"
+                            },
+                            "text": {
+                                "signal": "datum.Level"
+                            },
+                            "interactive": {
+                                "value": true
+                            },
+                            "fontWeight": {
+                                "value": "normal"
+                            },
+                            "baseline": {
+                                "value": "middle"
+                            },
+                            "fontSize": {
+                                "value": 11
+                            }
+                        },
+                        "hover": {
+                            "fontSize": {
+                                "value": 11.5
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "group",
+            "name": "ActivityNameColumn",
+            "style": "cell",
+            "title": {
+                "text": "Activity Name",
+                "anchor": "start",
+                "frame": "group",
+                "baseline": "middle",
+                "align": "left",
+                "color": "#252423",
+                "font": "Segoe UI",
+                "fontSize": 12,
+                "fontStyle": "bold"
+            },
+            "signals": [
+                {
+                    "name": "clicked",
+                    "value": "",
+                    "on": [
+                        {
+                            "events": "text:click",
+                            "update": "clicked === datum.ActivityName ? '' : datum.ActivityName"
+                        }
+                    ]
+                }
+            ],
+            "encode": {
+                "update": {
+                    "width": {
+                        "signal": "ActivityNameColumn"
+                    },
+                    "height": {
+                        "signal": "height"
+                    }
+                }
+            },
+            "marks": [
+                {
+                    "type": "text",
+                    "style": "col",
+                    "from": {
+                        "data": "input"
+                    },
+                    "interactive": true,
+                    "encode": {
+                        "update": {
+                            "align": {
+                                "value": "left"
+                            },
+                            "fill": {
+                                "value": "#252423"
+                            },
+                            "dx": {
+                                "signal": "datum.Critical === 'Critical' ? datum.Indentation - 15 : datum.Indentation"
+                            },
+                            "y": {
+                                "signal": "scale('y',datum.Index)+bandwidth('y')/2"
+                            },
+                            "text": {
+                                "signal": "datum.Critical === 'Critical' ? '⛤ ' + datum.ActivityName : datum.ActivityName"
+                            },
+                            "interactive": {
+                                "value": true
+                            },
+                            "tooltip": {
+                                "signal": "datum.ActivityName"
+                            },
+                            "fontWeight": {
+                                "signal": "datum.Critical === 'Critical' ? 'bold' : datum.Level === 1 ? 'bold' : clicked === datum.ActivityName ? 'bold' : 'normal'"
+                            },
+                            "fontStyle": {
+                                "signal": "datum.Level === 2 ? 'italic' : 'normal'"
+                            },
+                            "baseline": {
+                                "value": "middle"
+                            },
+                            "limit": {
+                                "signal": "ActivityNameColumn - datum.Indentation"
+                            },
+                            "fontSize": {
+                                "value": 11
+                            }
+                        },
+                        "hover": {
+                            "fontSize": {
+                                "value": 11.5
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "group",
+            "name": "BaselineStartColumn",
+            "style": "cell",
+            "title": {
+                "text": [
+                    "Baseline",
+                    "Start"
+                ],
+                "frame": "group",
+                "align": "center",
+                "baseline": "top",
+                "fontSize": 12,
+                "color": "#252423"
+            },
+            "encode": {
+                "update": {
+                    "width": {
+                        "signal": "BaselineStartColumn"
+                    },
+                    "height": {
+                        "signal": "height"
+                    }
+                }
+            },
+            "marks": [
+                {
+                    "type": "text",
+                    "style": "col",
+                    "from": {
+                        "data": "input"
+                    },
+                    "encode": {
+                        "update": {
+                            "align": {
+                                "value": "center"
+                            },
+                            "fill": {
+                                "value": "#252423"
+                            },
+                            "dx": {
+                                "signal": "BaselineStartColumn / 2"
+                            },
+                            "y": {
+                                "signal": "scale('y',datum.Index)+bandwidth('y')/2"
+                            },
+                            "text": {
+                                "signal": "datum.BaselineStartDate_DMY"
+                            },
+                            "fontWeight": {
+                                "value": "normal"
+                            },
+                            "interactive": {
+                                "value": true
+                            },
+                            "baseline": {
+                                "value": "middle"
+                            },
+                            "limit": {
+                                "signal": "BaselineStartColumn"
+                            },
+                            "fontSize": {
+                                "value": 11
+                            }
+                        },
+                        "hover": {
+                            "fontSize": {
+                                "value": 11.5
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "group",
+            "name": "BaselineFinishColumn",
+            "style": "cell",
+            "title": {
+                "text": [
+                    "Baseline",
+                    "Finish"
+                ],
+                "frame": "group",
+                "align": "center",
+                "baseline": "top",
+                "fontSize": 12,
+                "color": "#252423"
+            },
+            "encode": {
+                "update": {
+                    "width": {
+                        "signal": "BaselineFinishColumn"
+                    },
+                    "height": {
+                        "signal": "height"
+                    }
+                }
+            },
+            "marks": [
+                {
+                    "type": "text",
+                    "style": "col",
+                    "from": {
+                        "data": "input"
+                    },
+                    "encode": {
+                        "update": {
+                            "align": {
+                                "value": "center"
+                            },
+                            "fill": {
+                                "value": "#252423"
+                            },
+                            "dx": {
+                                "signal": "BaselineFinishColumn / 2"
+                            },
+                            "y": {
+                                "signal": "scale('y',datum.Index)+bandwidth('y')/2"
+                            },
+                            "text": {
+                                "signal": "datum.BaselineFinishDate_DMY"
+                            },
+                            "interactive": {
+                                "value": true
+                            },
+                            "fontWeight": {
+                                "value": "normal"
+                            },
+                            "baseline": {
+                                "value": "middle"
+                            },
+                            "limit": {
+                                "signal": "BaselineFinishColumn"
+                            },
+                            "fontSize": {
+                                "value": 11
+                            }
+                        },
+                        "hover": {
+                            "fontSize": {
+                                "value": 11.5
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "group",
+            "name": "CurrentStartColumn",
+            "style": "cell",
+            "title": {
+                "text": [
+                    "Current",
+                    "Start"
+                ],
+                "frame": "group",
+                "align": "center",
+                "baseline": "top",
+                "fontSize": 12,
+                "color": "#252423"
+            },
+            "encode": {
+                "update": {
+                    "width": {
+                        "signal": "CurrentStartColumn"
+                    },
+                    "height": {
+                        "signal": "height"
+                    }
+                }
+            },
+            "marks": [
+                {
+                    "type": "text",
+                    "style": "col",
+                    "from": {
+                        "data": "input"
+                    },
+                    "encode": {
+                        "update": {
+                            "align": {
+                                "value": "center"
+                            },
+                            "fill": {
+                                "value": "#252423"
+                            },
+                            "dx": {
+                                "signal": "CurrentStartColumn / 2"
+                            },
+                            "y": {
+                                "signal": "scale('y',datum.Index)+bandwidth('y')/2"
+                            },
+                            "text": {
+                                "signal": "datum.StartDate_DMY"
+                            },
+                            "interactive": {
+                                "value": true
+                            },
+                            "fontWeight": {
+                                "value": "normal"
+                            },
+                            "baseline": {
+                                "value": "middle"
+                            },
+                            "limit": {
+                                "signal": "CurrentStartColumn"
+                            },
+                            "fontSize": {
+                                "value": 11
+                            }
+                        },
+                        "hover": {
+                            "fontSize": {
+                                "value": 11.5
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "group",
+            "name": "CurrentFinishColumn",
+            "style": "cell",
+            "title": {
+                "text": [
+                    "Current",
+                    "Finish"
+                ],
+                "frame": "group",
+                "align": "center",
+                "baseline": "top",
+                "fontSize": 12,
+                "color": "#252423"
+            },
+            "encode": {
+                "update": {
+                    "width": {
+                        "signal": "CurrentFinishColumn"
+                    },
+                    "height": {
+                        "signal": "height"
+                    }
+                }
+            },
+            "marks": [
+                {
+                    "type": "text",
+                    "style": "col",
+                    "from": {
+                        "data": "input"
+                    },
+                    "encode": {
+                        "update": {
+                            "align": {
+                                "value": "center"
+                            },
+                            "fill": {
+                                "value": "#252423"
+                            },
+                            "dx": {
+                                "signal": "CurrentFinishColumn / 2"
+                            },
+                            "y": {
+                                "signal": "scale('y',datum.Index)+bandwidth('y')/2"
+                            },
+                            "text": {
+                                "signal": "datum.FinishDate_DMY"
+                            },
+                            "interactive": {
+                                "value": true
+                            },
+                            "fontWeight": {
+                                "value": "normal"
+                            },
+                            "baseline": {
+                                "value": "middle"
+                            },
+                            "limit": {
+                                "signal": "CurrentFinishColumn"
+                            },
+                            "fontSize": {
+                                "value": 11
+                            }
+                        },
+                        "hover": {
+                            "fontSize": {
+                                "value": 11.5
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "group",
+            "name": "RemDur",
+            "style": "cell",
+            "title": {
+                "text": [
+                    "Rem",
+                    "Dur"
+                ],
+                "frame": "group",
+                "align": "center",
+                "baseline": "top",
+                "fontSize": 12,
+                "color": "#252423"
+            },
+            "encode": {
+                "update": {
+                    "width": {
+                        "signal": "RemDur"
+                    },
+                    "height": {
+                        "signal": "height"
+                    }
+                }
+            },
+            "marks": [
+                {
+                    "type": "text",
+                    "style": "col",
+                    "from": {
+                        "data": "input"
+                    },
+                    "encode": {
+                        "update": {
+                            "align": {
+                                "value": "center"
+                            },
+                            "fill": {
+                                "value": "#252423"
+                            },
+                            "dx": {
+                                "signal": "RemDur / 2"
+                            },
+                            "y": {
+                                "signal": "scale('y',datum.Index)+bandwidth('y')/2"
+                            },
+                            "text": {
+                                "signal": "datum.RemDur"
+                            },
+                            "fontWeight": {
+                                "value": "normal"
+                            },
+                            "interactive": {
+                                "value": true
+                            },
+                            "baseline": {
+                                "value": "middle"
+                            },
+                            "limit": {
+                                "signal": "RemDur"
+                            },
+                            "fontSize": {
+                                "value": 11
+                            }
+                        },
+                        "hover": {
+                            "fontSize": {
+                                "value": 11.5
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "group",
+            "name": "TotalFloat",
+            "style": "cell",
+            "title": {
+                "text": [
+                    "Total",
+                    "Float"
+                ],
+                "frame": "group",
+                "align": "center",
+                "baseline": "top",
+                "fontSize": 12,
+                "color": "#252423"
+            },
+            "encode": {
+                "update": {
+                    "width": {
+                        "signal": "TotalFloat"
+                    },
+                    "height": {
+                        "signal": "height"
+                    }
+                }
+            },
+            "marks": [
+                {
+                    "type": "text",
+                    "style": "col",
+                    "from": {
+                        "data": "input"
+                    },
+                    "encode": {
+                        "update": {
+                            "align": {
+                                "value": "center"
+                            },
+                            "fill": {
+                                "value": "#252423"
+                            },
+                            "dx": {
+                                "signal": "TotalFloat / 2"
+                            },
+                            "y": {
+                                "signal": "scale('y',datum.Index)+bandwidth('y')/2"
+                            },
+                            "interactive": {
+                                "value": true
+                            },
+                            "text": {
+                                "signal": "datum.TotalFloat"
+                            },
+                            "fontWeight": {
+                                "value": "normal"
+                            },
+                            "baseline": {
+                                "value": "middle"
+                            },
+                            "limit": {
+                                "signal": "TotalFloat"
+                            },
+                            "fontSize": {
+                                "value": 11
+                            }
+                        },
+                        "hover": {
+                            "fontSize": {
+                                "value": 11.5
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "group",
+            "name": "gantt",
+            "encode": {
+                "update": {
+                    "width": {
+                        "signal": "ganttWidth"
+                    },
+                    "height": {
+                        "signal": "height"
+                    }
+                }
+            },
+            "axes": [
+                {
+                    "description": "Day axis",
+                    "ticks": true,
+                    "labelPadding": -12,
+                    "scale": "xScaleInteractive",
+                    "tickSize": 18,
+                    "tickWidth": 1,
+                    "tickColor": "#605E5C",
+                    "tickOpacity": 1,
+                    "orient": "top",
+                    "labelFontSize": 10,
+                    "labelFont": "Segoe UI",
+                    "bandPosition": 1,
+                    "grid": false,
+                    "zindex": 1,
+                    "encode": {
+                        "labels": {
+                            "update": {
+                                "text": [
+                                    {
+                                        "signal": "xAxisTimeUnit === 'days' ? timeFormat(timeParse(datum.label, '%d/%m/%y'), '%e') : (xAxisTimeUnit === 'months' ? timeFormat(timeParse(datum.label, '%d/%m/%y'), '%b') : ('Q' + quarter(timeParse(datum.label, '%d/%m/%y'))))"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "description": "Day Month axis",
+                    "ticks": true,
+                    "scale": "xScaleInteractive",
+                    "domain": false,
+                    "orient": "top",
+                    "offset": 0,
+                    "tickSize": 22,
+                    "tickWidth": 1,
+                    "tickColor": "#605E5C",
+                    "tickOpacity": 1,
+                    "labelFontSize": 10,
+                    "labelFont": "Segoe UI",
+                    "labelPadding": 1,
+                    "bandPosition": 0,
+                    "grid": false,
+                    "zindex": 0,
+                    "encode": {
+                        "ticks": {
+                            "update": {
+                                "strokeOpacity": [
+                                    {
+                                        "test": "xAxisTimeUnit === 'days' && timeFormat(timeParse(datum.label,'%d/%m/%y'), '%d') === '01'",
+                                        "value": 1
+                                    },
+                                    {
+                                        "test": "xAxisTimeUnit === 'months' && timeFormat(timeParse(datum.label,'%d/%m/%y'), '%m') === '01'",
+                                        "value": 1
+                                    },
+                                    {
+                                        "test": "xAxisTimeUnit === 'quarters' && ('Q' + quarter(timeParse(datum.label, '%d/%m/%y'))) === 'Q1'",
+                                        "value": 1
+                                    },
+                                    {
+                                        "value": 0
+                                    }
+                                ]
+                            }
+                        },
+                        "labels": {
+                            "update": {
+                                "text": [
+                                    {
+                                        "test": "xAxisTimeUnit === 'days' && timeFormat(timeParse(datum.label,'%d/%m/%y'), '%d') === '15'",
+                                        "signal": "timeFormat(timeParse(datum.label,'%d/%m/%y'),'%b-%Y')"
+                                    },
+                                    {
+                                        "test": "xAxisTimeUnit === 'months' && timeFormat(timeParse(datum.label,'%d/%m/%y'), '%m') === '06'",
+                                        "signal": "timeFormat(timeParse(datum.label,'%d/%m/%y'),'%Y')"
+                                    },
+                                    {
+                                        "test": "xAxisTimeUnit === 'quarters' && ('Q' + quarter(timeParse(datum.label, '%d/%m/%y'))) === 'Q2'",
+                                        "signal": "timeFormat(timeParse(datum.label,'%d/%m/%y'),'%Y')"
+                                    },
+                                    {
+                                        "value": ""
+                                    }
+                                ],
+                                "dx": {
+                                    "signal": "x_step / 2"
+                                }
+                            }
+                        }
+                    }
+                }
+            ],
+            "marks": [
+                {
+                    "name": "ActivityBars",
+                    "description": "The activity timeline bars (total)",
+                    "type": "group",
+                    "clip": true,
+                    "from": {
+                        "data": "tasks"
+                    },
+                    "encode": {
+                        "update": {
+                            "x": {
+                                "scale": {
+                                    "signal": "xAxisTimeUnit === 'days' ? 'xScaleIntDay' : (xAxisTimeUnit === 'months' ? 'xScaleIntMon' : 'xScaleIntQua')"
+                                },
+                                "field": "encodedCurrentStart"
+                            },
+                            "x2": {
+                                "scale": {
+                                    "signal": "xAxisTimeUnit === 'days' ? 'xScaleIntDay' : (xAxisTimeUnit === 'months' ? 'xScaleIntMon' : 'xScaleIntQua')"
+                                },
+                                "field": "encodedCurrentFinish"
+                            },
+                            "y": {
+                                "scale": "y",
+                                "field": "Index",
+                                "offset": 6
+                            },
+                            "height": {
+                                "signal": "bandwidth('y') * 1/2"
+                            },
+                            "tooltip": {
+                                "signal": "{'Activity Name':datum.ActivityName ,'Current Start':timeFormat(datum.CurrentStart,'%a, %d %B %Y' ) , 'Current Finish':timeFormat(datum.CurrentFinish,'%a, %d %B %Y' ), 'Rem Dur':datum.RemDur, 'Total Float':datum.TotalFloat }"
+                            },
+                            "stroke": {
+                                "field": "Level",
+                                "scale": "cStroke"
+                            },
+                            "strokeWidth": {
+                                "value": 1
+                            },
+                            "cornerRadius": {
+                                "value": 8
+                            },
+                            "zindex": {
+                                "value": 2
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "ActivityBarsToday",
+                    "description": "The activity timeline bars (till today)",
+                    "type": "group",
+                    "clip": true,
+                    "from": {
+                        "data": "tasksTillToday"
+                    },
+                    "encode": {
+                        "update": {
+                            "x": {
+                                "scale": {
+                                    "signal": "xAxisTimeUnit === 'days' ? 'xScaleIntDay' : (xAxisTimeUnit === 'months' ? 'xScaleIntMon' : 'xScaleIntQua')"
+                                },
+                                "field": "CurrentStartFill"
+                            },
+                            "x2": {
+                                "scale": {
+                                    "signal": "xAxisTimeUnit === 'days' ? 'xScaleIntDay' : (xAxisTimeUnit === 'months' ? 'xScaleIntMon' : 'xScaleIntQua')"
+                                },
+                                "field": "CurrentFinishFill"
+                            },
+                            "y": {
+                                "scale": "y",
+                                "field": "Index",
+                                "offset": 6
+                            },
+                            "height": {
+                                "signal": "bandwidth('y') * 1/2"
+                            },
+                            "tooltip": {
+                                "signal": "{'Activity Name':datum.ActivityName ,'Current Start':timeFormat(datum.CurrentStart,'%a, %d %B %Y' ) , 'Current Finish':timeFormat(datum.CurrentFinish,'%a, %d %B %Y' ), 'Rem Dur':datum.RemDur, 'Total Float':datum.TotalFloat }"
+                            },
+                            "fill": {
+                                "field": "Level",
+                                "scale": "cFill"
+                            },
+                            "stroke": {
+                                "field": "Level",
+                                "scale": "cStroke"
+                            },
+                            "strokeWidth": {
+                                "value": 1
+                            },
+                            "cornerRadius": {
+                                "value": 8
+                            },
+                            "zindex": {
+                                "value": 1
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "BaselineActivityBars",
+                    "description": "The activity timeline bars (total)",
+                    "type": "group",
+                    "clip": true,
+                    "from": {
+                        "data": "tasks"
+                    },
+                    "encode": {
+                        "update": {
+                            "x": {
+                                "scale": {
+                                    "signal": "xAxisTimeUnit === 'days' ? 'xScaleIntDay' : (xAxisTimeUnit === 'months' ? 'xScaleIntMon' : 'xScaleIntQua')"
+                                },
+                                "field": "encodedBaselineStart"
+                            },
+                            "x2": {
+                                "scale": {
+                                    "signal": "xAxisTimeUnit === 'days' ? 'xScaleIntDay' : (xAxisTimeUnit === 'months' ? 'xScaleIntMon' : 'xScaleIntQua')"
+                                },
+                                "field": "encodedBaselineFinish"
+                            },
+                            "y": {
+                                "scale": "y",
+                                "field": "Index",
+                                "offset": -2
+                            },
+                            "height": {
+                                "signal": "bandwidth('y') * 1/4"
+                            },
+                            "tooltip": {
+                                "signal": "{'Activity Name':datum.ActivityName ,'Current Start':timeFormat(datum.CurrentStart,'%a, %d %B %Y' ) , 'Current Finish':timeFormat(datum.CurrentFinish,'%a, %d %B %Y' ), 'Rem Dur':datum.RemDur, 'Total Float':datum.TotalFloat }"
+                            },
+                            "fill": {
+                                "field": "Level",
+                                "scale": "cFillLight"
+                            },
+                            "strokeWidth": {
+                                "value": 1
+                            },
+                            "cornerRadius": {
+                                "value": 2
+                            },
+                            "zindex": {
+                                "value": 2
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "milestoneSymbols",
+                    "description": "milestone",
+                    "type": "symbol",
+                    "clip": true,
+                    "from": {
+                        "data": "milestone"
+                    },
+                    "encode": {
+                        "update": {
+                            "x": {
+                                "scale": {
+                                    "signal": "xAxisTimeUnit === 'days' ? 'xScaleIntDay' : (xAxisTimeUnit === 'months' ? 'xScaleIntMon' : 'xScaleIntQua')"
+                                },
+                                "field": "encodedCurrentDate"
+                            },
+                            "y": {
+                                "scale": "y",
+                                "field": "Index",
+                                "offset": 12
+                            },
+                            "size": {
+                                "signal": "pow( min(y_step,x_step),1.3)"
+                            },
+                            "shape": {
+                                "value": "diamond"
+                            },
+                            "height": {
+                                "signal": "bandwidth('y')"
+                            },
+                            "tooltip": {
+                                "signal": "{'Activity Name': datum.ActivityName, 'Current Start': timeFormat(datum.CurrentStart, '%d') !== 'NaN' ? timeFormat(datum.CurrentStart, '%a, %d %B %Y') : '', 'Current Finish': timeFormat(datum.CurrentFinish, '%a, %d %B %Y'), 'Rem Dur': datum.RemDur, 'Total Float': datum.TotalFloat}"
+                            },
+                            "fill": {
+                                "field": "Level",
+                                "scale": "cFill"
+                            },
+                            "stroke": {
+                                "field": "Level",
+                                "scale": "cStroke"
+                            },
+                            "strokeWidth": {
+                                "value": 1
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "BaselineMilestoneSymbols",
+                    "description": "milestone",
+                    "type": "symbol",
+                    "clip": true,
+                    "from": {
+                        "data": "BaselineMilestone"
+                    },
+                    "encode": {
+                        "update": {
+                            "x": {
+                                "scale": {
+                                    "signal": "xAxisTimeUnit === 'days' ? 'xScaleIntDay' : (xAxisTimeUnit === 'months' ? 'xScaleIntMon' : 'xScaleIntQua')"
+                                },
+                                "field": "encodedBaselineDate"
+                            },
+                            "y": {
+                                "scale": "y",
+                                "field": "Index",
+                                "offset": 2
+                            },
+                            "size": {
+                                "signal": "pow( min(y_step,x_step),1.3)"
+                            },
+                            "shape": {
+                                "value": "diamond"
+                            },
+                            "height": {
+                                "signal": "bandwidth('y')"
+                            },
+                            "tooltip": {
+                                "signal": "{'Activity Name':datum.ActivityName ,'Current Start':timeFormat(datum.CurrentStart,'%a, %d %B %Y' ) , 'Rem Dur':datum.RemDur, 'Total Float':datum.TotalFloat }"
+                            },
+                            "fill": {
+                                "field": "Level",
+                                "scale": "cFillLight"
+                            },
+                            "stroke": {
+                                "field": "Level",
+                                "scale": "cStroke"
+                            },
+                            "strokeWidth": {
+                                "value": 1
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "todayRule",
+                    "description": "Today rule",
+                    "type": "rule",
+                    "data": [
+                        {}
+                    ],
+                    "encode": {
+                        "update": {
+                            "x": {
+                                "signal": "xAxisTimeUnit === 'days' ? (scale('xScaleIntDay', todayRule)) : (xAxisTimeUnit === 'months' ? (scale('xScaleIntMon', todayRule) + (bandwidth('xScaleIntMon') / 2)) : (scale('xScaleIntQua', todayRule) + (bandwidth('xScaleIntQua') / 2)))"
+                            },
+                            "y": {
+                                "value": 0
+                            },
+                            "y2": {
+                                "signal": "height"
+                            },
+                            "height": {
+                                "signal": "height"
+                            },
+                            "strokeWidth": {
+                                "signal": "indata('dayScale', 'encodedDate', todayRule) ? 1 : 0"
+                            },
+                            "stroke": {
+                                "value": "#377eb9"
+                            },
+                            "strokeDash": {
+                                "value": [
+                                    2,
+                                    2
+                                ]
+                            },
+                            "opacity": {
+                                "value": 0.8
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "layout": {
+        "padding": {
+            "signal": "columnPadding"
+        },
+        "bounds": "flush",
+        "align": "none"
+    },
+    "scales": [
+        {
+            "name": "xScaleInteractive",
+            "type": "band",
+            "domain": {
+                "data": "mergedTable",
+                "fields": [
+                    "encodedDate"
+                ],
+                "sort": {
+                    "op": "min",
+                    "field": "sequence",
+                    "order": "ascending"
+                }
+            },
+            "range": {
+                "signal": "[0,ganttWidth]"
+            }
+        },
+        {
+            "name": "xScaleIntDay",
+            "type": "band",
+            "domain": {
+                "data": "dayScale",
+                "fields": [
+                    "encodedDate"
+                ],
+                "sort": {
+                    "op": "min",
+                    "field": "sequence",
+                    "order": "ascending"
+                }
+            },
+            "range": {
+                "signal": "[0,ganttWidth]"
+            }
+        },
+        {
+            "name": "xScaleIntMon",
+            "type": "band",
+            "domain": {
+                "data": "monScale",
+                "fields": [
+                    "encodedDate"
+                ],
+                "sort": {
+                    "op": "min",
+                    "field": "sequence",
+                    "order": "ascending"
+                }
+            },
+            "range": {
+                "signal": "[0,ganttWidth]"
+            }
+        },
+        {
+            "name": "xScaleIntQua",
+            "type": "band",
+            "domain": {
+                "data": "quarterScale",
+                "fields": [
+                    "encodedDate"
+                ],
+                "sort": {
+                    "op": "min",
+                    "field": "sequence",
+                    "order": "ascending"
+                }
+            },
+            "range": {
+                "signal": "[0,ganttWidth]"
+            }
+        },
+        {
+            "name": "y",
+            "type": "band",
+            "domain": {
+                "fields": [
+                    {
+                        "data": "input",
+                        "field": "Index"
+                    }
+                ],
+                "sort": {
+                    "op": "min",
+                    "field": "Index",
+                    "order": "ascending"
+                }
+            },
+            "range": {
+                "step": {
+                    "signal": "y_step"
+                }
+            },
+            "paddingInner": {
+                "signal": "yPaddingInner"
+            },
+            "paddingOuter": {
+                "signal": "yPaddingOuter"
+            }
+        },
+        {
+            "name": "cStroke",
+            "type": "ordinal",
+            "range": [
+                "#118DFF",
+                "#12239E",
+                "#E66C37",
+                "#6B007B",
+                "#E044A7",
+                "#744EC2",
+                "#D9B300",
+                "#D64550",
+                "#23C26F"
+            ],
+            "domain": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ]
+        },
+        {
+            "name": "cFill",
+            "type": "ordinal",
+            "range": [
+                "#118DFF",
+                "#12239E",
+                "#E66C37",
+                "#6B007B",
+                "#E044A7",
+                "#744EC2",
+                "#D9B300",
+                "#D64550",
+                "#23C26F"
+            ],
+            "domain": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ]
+        },
+        {
+            "name": "cFillLight",
+            "type": "ordinal",
+            "range": [
+                "#a0d1ff",
+                "#a0a7d8",
+                "#f5c4af",
+                "#c499ca",
+                "#f3b4dc",
+                "#c7b8e7",
+                "#f0e199",
+                "#efb5b9",
+                "#A7E7C5"
+            ],
+            "domain": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ]
+        }
+    ],
+    "config": {
+        "view": {
+            "stroke": "transparent"
+        },
+        "style": {
+            "col": {
+                "fontSize": 11
+            },
+            "cell": {
+                "strokeWidth": {
+                    "signal": "0"
+                }
+            }
+        }
+    }
+}
